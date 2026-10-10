@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Главная — Secure Calculator{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>API Calculator</h1>
+    <p>Перейдите в один из разделов через меню сверху:</p>
+    <ul>
+        <li><a href="/calculator">🧮 Математический калькулятор</a> — базовые операции, тригонометрия, степень, факториал</li>
+        <li><a href="/discount">🏷️ Калькулятор скидок</a> — расчёт итоговой цены со скидкой</li>
+        <li><a href="/currency">💱 Конвертер валют</a> — актуальные курсы через внешний API</li>
+    </ul>
+</div>
+{% endblock %}

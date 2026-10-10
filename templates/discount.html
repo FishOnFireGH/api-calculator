@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Калькулятор скидки{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🏷️ Калькулятор скидки</h2>
+    <p>Рассчитайте итоговую цену товара с учётом скидки.</p>
+    
+    <input type="number" id="discPrice" placeholder="Исходная цена" step="any">
+    <input type="number" id="discPercent" placeholder="Скидка (%)" step="any" min="0" max="100">
+    <button onclick="doDiscount()">Посчитать скидку</button>
+    <div class="result" id="discResult">Результат появится здесь</div>
+</div>
+
+<script>
+    async function doDiscount() {
+        const resultEl = document.getElementById('discResult');
+        resultEl.innerText = "Загрузка...";
+        try {
+            const response = await fetch('/discount', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    price: parseFloat(document.getElementById('discPrice').value),
+                    discount_percent: parseFloat(document.getElementById('discPercent').value)
+                })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                resultEl.innerText = 
+`✅ Исходная цена: ${data.original_price}
+🏷️ Скидка: ${data.discount_percent}%
+💰 Итоговая цена: ${data.final_price}`;
+            } else {
+                resultEl.innerText = "❌ Ошибка: " + data.detail;
+            }
+        } catch (error) {
+            resultEl.innerText = "❌ Сетевая ошибка: " + error.message;
+        }
+    }
+</script>
+{% endblock %}

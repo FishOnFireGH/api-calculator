@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Конвертер валют{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>💱 Конвертер валют (Live)</h2>
+    <p>Используются актуальные курсы с сервиса Frankfurter.</p>
+    
+    <div class="row">
+        <input type="number" id="curAmount" placeholder="Сумма" value="100" step="any">
+        <select id="curFrom">
+            <option value="RUB">RUB — Рубль</option>
+            <option value="USD">USD — Доллар</option>
+            <option value="EUR">EUR — Евро</option>
+            <option value="GBP">GBP — Фунт</option>
+            <option value="JPY">JPY — Йена</option>
+            <option value="CNY">CNY — Юань</option>
+        </select>
+    </div>
+    <div class="row">
+        <span style="line-height: 40px; font-weight: 600;">Конвертировать в:</span>
+        <select id="curTo">
+            <option value="RUB">RUB — Рубль</option>
+            <option value="USD">USD — Доллар</option>
+            <option value="EUR">EUR — Евро</option>
+            <option value="GBP">GBP — Фунт</option>
+            <option value="JPY">JPY — Йена</option>
+            <option value="CNY">CNY — Юань</option>
+        </select>
+    </div>
+    <button onclick="doCurrency()">Конвертировать</button>
+    <div class="result" id="curResult">Результат появится здесь</div>
+</div>
+
+<script>
+    async function doCurrency() 
+    {
+        const resultEl = document.getElementById('curResult');
+        resultEl.innerText = "Загрузка...";
+        try 
+        {
+            const response = await fetch('/currency', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: parseFloat(document.getElementById('curAmount').value),
+                    from: document.getElementById('curFrom').value,
+                    to: document.getElementById('curTo').value
+                })
+            });
+            const data = await response.json();
+            if (response.ok) 
+            {
+                resultEl.innerText = 
+`
+✅ Сумма: ${data.amount} ${data.from}
+📊 Курс: 1 ${data.from} = ${data.rate} ${data.to}
+💰 Итого: ${data.converted_amount} ${data.to}
+`;
+            } 
+            else 
+            {
+                resultEl.innerText = "❌ Ошибка: " + data.detail;
+            }
+        } 
+        catch (error) 
+        {
+            resultEl.innerText = "❌ Сетевая ошибка: " + error.message;
+        }
+    }
+</script>
+{% endblock %}

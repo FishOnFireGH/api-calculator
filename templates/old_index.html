@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #f4f4f9; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        input, select { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px; font-weight: bold; min-height: 20px; }
+        .row { display: flex; gap: 10px; }
+        .row > * { flex: 1; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align: center;">API Calculator</h1>
+
+    <!-- Блок 1: Базовый и Тригонометрия -->
+    <div class="card">
+        <h2>🧮 Математика и Тригонометрия</h2>
+        <div class="row">
+            <input type="number" id="calcNum1" placeholder="Число 1 (или угол в градусах)">
+            <select id="calcOp">
+                <option value="add">Сложить (+)</option>
+                <option value="subtract">Вычесть (-)</option>
+                <option value="multiply">Умножить (*)</option>
+                <option value="divide">Разделить (/)</option>
+                <option value="power">Степень (x^y)</option>
+                <option value="sin">Синус (sin)</option>
+                <option value="cos">Косинус (cos)</option>
+                <option value="tan">Тангенс (tan)</option>
+                <option value="cotan">Котангенс (ctg)</option>
+                <option value="factorial">Факториал (n!)</option>
+            </select>
+        </div>
+        <input type="number" id="calcNum2" placeholder="Число 2 (не нужно для sin/cos/tan/ctg/!)">
+        <button onclick="doCalc()">Вычислить</button>
+        <div class="result" id="calcResult">Результат появится здесь</div>
+    </div>
+
+    <!-- Блок 2: Скидка -->
+    <div class="card">
+        <h2>🏷️ Калькулятор скидки</h2>
+        <input type="number" id="discPrice" placeholder="Исходная цена">
+        <input type="number" id="discPercent" placeholder="Скидка (%)">
+        <button onclick="doDiscount()">Посчитать скидку</button>
+        <div class="result" id="discResult">Результат появится здесь</div>
+    </div>
+
+    <!-- Блок 3: Валюты -->
+    <div class="card">
+        <h2>💱 Конвертер валют (Live)</h2>
+        <div class="row">
+            <input type="number" id="curAmount" placeholder="Сумма" value="100">
+            <select id="curFrom">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="RUB">RUB</option>
+            </select>
+            <span style="line-height: 40px;">в</span>
+            <select id="curTo">
+                <option value="RUB" selected>RUB</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+            </select>
+        </div>
+        <button onclick="doCurrency()">Конвертировать</button>
+        <div class="result" id="curResult">Результат появится здесь</div>
+    </div>
+
+    <script>
+        // Универсальная функция для отправки POST запросов
+        async function sendRequest(url, body, resultElementId) {
+            const resultEl = document.getElementById(resultElementId);
+            resultEl.innerText = "Загрузка...";
+            resultEl.style.color = "black";
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    resultEl.style.color = "green";
+                    resultEl.innerText = JSON.stringify(data, null, 2);
+                } else {
+                    resultEl.style.color = "red";
+                    resultEl.innerText = "Ошибка: " + data.detail;
+                }
+            } catch (error) {
+                resultEl.style.color = "red";
+                resultEl.innerText = "Сетевая ошибка: " + error.message;
+            }
+        }
+
+        function doCalc() {
+            sendRequest('/calculate', {
+                num1: parseFloat(document.getElementById('calcNum1').value),
+                num2: parseFloat(document.getElementById('calcNum2').value),
+                operation: document.getElementById('calcOp').value
+            }, 'calcResult');
+        }
+
+        function doDiscount() {
+            sendRequest('/discount', {
+                price: parseFloat(document.getElementById('discPrice').value),
+                discount_percent: parseFloat(document.getElementById('discPercent').value)
+            }, 'discResult');
+        }
+
+        function doCurrency() {
+            sendRequest('/currency', {
+                amount: parseFloat(document.getElementById('curAmount').value),
+                from: document.getElementById('curFrom').value,
+                to: document.getElementById('curTo').value
+            }, 'curResult');
+        }
+    </script>
+</body>
+</html>

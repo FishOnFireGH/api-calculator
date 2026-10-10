@@ -1,0 +1,21 @@
+"""
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+
+@app.route("/", methods = ["GET"])
+def calculate():
+    number1 = request.args.get("number1", type=float)
+    number2 = request.args.get("number2", type=float)
+
+    if number1 is None or number2 is None:
+        return jsonify({"error": "Параметры number1 и number2 обязательны"}), 400
+
+    result = number1 + number2
+    return jsonify({"number1": number1, "number2": number2, "result": result})
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port = 8080)
+"""

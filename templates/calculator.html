@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Калькулятор{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>🧮 Математический калькулятор</h2>
+    <p>Поддерживает: +, −, ×, ÷, степень, sin, cos, tan, ctg, факториал.</p>
+    
+    <div class="row">
+        <input type="number" id="calcNum1" placeholder="Число 1 (или угол в градусах)" step="any">
+        <select id="calcOp">
+            <option value="add">Сложить (+)</option>
+            <option value="subtract">Вычесть (−)</option>
+            <option value="multiply">Умножить (×)</option>
+            <option value="divide">Разделить (÷)</option>
+            <option value="power">Степень (x^y)</option>
+            <option value="sin">Синус (sin)</option>
+            <option value="cos">Косинус (cos)</option>
+            <option value="tan">Тангенс (tan)</option>
+            <option value="cotan">Котангенс (ctg)</option>
+            <option value="factorial">Факториал (n!)</option>
+        </select>
+    </div>
+    <input type="number" id="calcNum2" placeholder="Число 2 (не нужно для sin/cos/tan/ctg/!)" step="any">
+    <button onclick="doCalc()">Вычислить</button>
+    <div class="result" id="calcResult">Результат появится здесь</div>
+</div>
+
+<script>
+    async function doCalc() {
+        const resultEl = document.getElementById('calcResult');
+        resultEl.innerText = "Загрузка...";
+        try {
+            const response = await fetch('/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    num1: parseFloat(document.getElementById('calcNum1').value),
+                    num2: parseFloat(document.getElementById('calcNum2').value),
+                    operation: document.getElementById('calcOp').value
+                })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                resultEl.innerText = `✅ Результат: ${data.result}`;
+            } else {
+                resultEl.innerText = "❌ Ошибка: " + data.detail;
+            }
+        } catch (error) {
+            resultEl.innerText = "❌ Сетевая ошибка: " + error.message;
+        }
+    }
+</script>
+{% endblock %}
