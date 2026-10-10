@@ -26,5 +26,5 @@ trash.py
 very_old_app.py
 
 # Лишние файлы в templates
-templates/test.html
+templates/fi.txt
 templates/old_index.html
