@@ -39,5 +39,5 @@
 
 >[! info] Удалить его из памяти:
 >```bash
-docker rm -f calc-run
+>docker rm -f calc-run
 >```
