@@ -1,0 +1,83 @@
+name: Security Scans (SAST & Container)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # Запускать сканирование раз в неделю по расписанию (например, по понедельникам в 3:00 UTC)
+  schedule:
+    - cron: '0 3 * * 1'
+
+jobs:
+  # 1: Сканирование кода (SAST)
+  sast-scan:
+    name: Static Analysis (Semgrep & Bandit)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Разрешение на загрузку результатов в Security tab
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Запуск Semgrep с правилами для Python
+      - name: Run Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/python
+            p/owasp-top-ten
+            p/cwe-top-25
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      # Установка и запуск Bandit с выводом в формате SARIF
+      - name: Install Bandit
+        run: pip install "bandit[sarif]"
+
+      - name: Run Bandit
+        run: bandit -r . -f sarif -o bandit-results.sarif -ll
+
+      # Загрузка результатов Bandit в GitHub Security tab
+      - name: Upload Bandit SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() # Загружать даже если были найдены проблемы
+        with:
+          sarif_file: bandit-results.sarif
+          category: bandit
+
+  # 2: Сканирование Docker-образа
+  container-scan:
+    name: Container Scan (Trivy)
+    runs-on: ubuntu-latest
+    # Эта задача зависит от успешного завершения SAST-сканирования
+    needs: sast-scan
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t my-calculator:${{ github.sha }} .
+
+      # Сканирование образа с помощью Trivy
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.36.0
+        with:
+          image-ref: 'my-calculator:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH' # Фокусируемся на критических и высоких уязвимостях
+          exit-code: '1' # **ВАЖНО:** "1" означает, что пайплайн упадёт, если найдутся уязвимости
+          ignore-unfixed: true # Игнорировать уязвимости, для которых нет исправления
+
+      # Загрузка результатов Trivy в GitHub Security tab
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy-container'
