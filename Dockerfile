@@ -8,8 +8,14 @@ WORKDIR /app
 COPY requirements.txt .
 COPY READme.md .
 
-# 4. Устанавливаем библиотеки (в данном случае Flask) внутри контейнера.
-RUN pip install --no-cache-dir -r requirements.txt
+# 4. Обновляем системные пакеты (убирает уязвимости ОС)
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel # Обновляем утилиты, на которые жалуется Trivy
+# ставим зависимости
+RUN pip install --no-cache-dir -r requirements.txt 
 
 # 5. Копируем только нужные файлы (не копируем .git, .env и прочий мусор)
 COPY app.py .
