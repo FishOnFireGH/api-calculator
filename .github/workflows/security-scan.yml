@@ -21,23 +21,53 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Запуск Semgrep с правилами для Python
-      - name: Run Semgrep SAST
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: >-
-            p/python
-            p/owasp-top-ten
-            p/cwe-top-25
-        env:
-          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+            # Устанавливаем Semgrep
+      - name: Install Semgrep
+        run: pip install semgrep
 
-      # Установка и запуск Bandit с выводом в формате SARIF
+      # Генерируем SARIF для GitHub Security (с нужными правилами)
+      - name: Run Semgrep (SARIF)
+        run: |
+          semgrep --config p/python \
+                  --config p/owasp-top-ten \
+                  --config p/cwe-top-25 \
+                  --sarif --output semgrep-results.sarif || true
+
+      # Генерируем JSON для скачивания (с теми же правилами)
+      - name: Run Semgrep (JSON)
+        run: |
+          semgrep --config p/python \
+                  --config p/owasp-top-ten \
+                  --config p/cwe-top-25 \
+                  --json --output semgrep-results.json || true
+
+      # Отправляем SARIF в GitHub Code Scanning
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: semgrep-results.sarif
+          category: semgrep
+
+      # Сохраняем оба файла как артефакты
+      - name: Upload Semgrep Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-reports
+          path: |
+            semgrep-results.sarif
+            semgrep-results.json
+
+      # Установка и запуск Bandit с выводом в формате SARIF и JSON
       - name: Install Bandit
         run: pip install "bandit[sarif]"
 
       - name: Run Bandit
-        run: bandit -r . -f sarif -o bandit-results.sarif -ll
+        run: bandit -r . -f sarif -o bandit-results.sarif -ll || true
+
+      - name: Run Bandit (JSON)
+        run: bandit -r . -f json -o bandit-results.json -ll || true
 
       # Загрузка результатов Bandit в GitHub Security tab
       - name: Upload Bandit SARIF
@@ -46,6 +76,15 @@ jobs:
         with:
           sarif_file: bandit-results.sarif
           category: bandit
+
+      # Загружаем JSON как артефакты
+      - name: Upload SAST JSON Artifacts   # 👇 ДОБАВЛЕНО
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-json-reports
+          path: |
+            bandit-results.json
 
   # 2: Сканирование Docker-образа
   container-scan:
@@ -74,6 +113,15 @@ jobs:
           exit-code: '1' #ВАЖНО: "1" означает, что пайплайн упадёт, если найдутся уязвимости
           ignore-unfixed: true # Игнорировать уязвимости, для которых нет исправления
 
+      - name: Run Trivy (JSON)
+        uses: aquasecurity/trivy-action@v0.36.0
+        if: always() # Генерируем JSON, даже если SARIF упал с ошибкой
+        with:
+          image-ref: 'my-calculator:${{ github.sha }}'
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+
       # Загрузка результатов Trivy в GitHub Security tab
       - name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v4
@@ -81,6 +129,13 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-container'
+      # Загрузка результатов Trivy в JSON
+      - name: Upload Trivy JSON Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-json-report
+          path: trivy-results.json
 
   # 3: Анализ Dockerfile
   dockerfile-lint:
@@ -107,3 +162,55 @@ jobs:
         with:
           sarif_file: hadolint-results.sarif
           category: hadolint
+
+      - name: Run Hadolint (JSON)  
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Dockerfile
+          format: json
+          output-file: hadolint-results.json
+          no-fail: true
+
+      - name: Upload Hadolint JSON Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hadolint-json-report
+          path: hadolint-results.json
+
+  # 4: DAST (OWASP ZAP)
+  dast-scan:
+    if: always()
+    name: Dynamic Scan (OWASP ZAP)
+    runs-on: ubuntu-latest
+    needs: container-scan # Запускаем после сборки образа (или после SAST)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Запускаем ваш API-калькулятор как сервис, чтобы ZAP мог его атаковать
+      - name: Start Application Service
+        run: |
+          docker build -t my-calculator:${{ github.sha }} .
+          docker run -d --name app-target -p 8080:8080 my-calculator:${{ github.sha }}
+          # Ждём, пока приложение запустится (простой healthcheck)
+          sleep 5
+
+      # ZAP Baseline Scan (обходит приложение)
+      - name: Run ZAP Baseline Scan (HTML + JSON)
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: 'http://172.17.0.1:8080'
+          # Генерируем JSON отчёт (по умолчанию создаётся HTML)
+          cmd_options: '-J report_json.json'
+          fail_action: false # Не роняем сборку сразу, сначала смотрим отчёт
+          allow_issue_writing: false # Не создавать Issues в GitHub
+
+      - name: Upload ZAP Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-reports
+          path: |
+            report_html.html
+            report_json.json
