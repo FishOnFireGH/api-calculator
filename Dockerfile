@@ -13,8 +13,14 @@ RUN apt-get update && \
     apt-get upgrade -y && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel # Обновляем утилиты, на которые жалуется Trivy
+# Обновляем утилиты, на которые жалуется Trivy
+RUN pip install --no-cache-dir \
+    pip==26.2.0 \
+    setuptools==84.1.0 \
+    wheel==0.46.2 
+
 # ставим зависимости
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt 
 
 # 5. Копируем только нужные файлы (не копируем .git, .env и прочий мусор)
