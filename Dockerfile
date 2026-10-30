@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir \
 
 # ставим зависимости
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt 
+RUN pip install --no-cache-dir --upgrade-strategy eager -r requirements.txt 
 
 # 5. Копируем только нужные файлы (не копируем .git, .env и прочий мусор)
 COPY app.py .
