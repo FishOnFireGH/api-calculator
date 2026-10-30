@@ -71,7 +71,7 @@ jobs:
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH' # Фокусируемся на критических и высоких уязвимостях
-          exit-code: '1' # **ВАЖНО:** "1" означает, что пайплайн упадёт, если найдутся уязвимости
+          exit-code: '1' #ВАЖНО: "1" означает, что пайплайн упадёт, если найдутся уязвимости
           ignore-unfixed: true # Игнорировать уязвимости, для которых нет исправления
 
       # Загрузка результатов Trivy в GitHub Security tab
@@ -81,3 +81,29 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
           category: 'trivy-container'
+
+  # 3: Анализ Dockerfile
+  dockerfile-lint:
+    name: Dockerfile Lint (Hadolint)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # Необходимо для загрузки SARIF
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+          output-file: hadolint-results.sarif
+          no-fail: true # Не ронять пайплайн, а просто сгенерировать отчёт
+
+      - name: Upload Hadolint SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always() # Загружаем отчёт, даже если есть замечания
+        with:
+          sarif_file: hadolint-results.sarif
+          category: hadolint
