@@ -15,13 +15,13 @@ RUN apt-get update && \
 
 # Обновляем утилиты, на которые жалуется Trivy
 RUN pip install --no-cache-dir \
-    pip==26.2.0 \
-    setuptools==84.1.0 \
-    wheel==0.46.2 
+    pip==26.2.2 \
+    setuptools==84.2.1 \
+    wheel==0.48.0 
 
 # ставим зависимости
 COPY requirements.txt .
-RUN pip install --no-cache-dir --force-reinstall -r requirements.txt 
+RUN pip install --no-cache-dir -r requirements.txt 
 
 # 5. Копируем только нужные файлы (не копируем .git, .env и прочий мусор)
 COPY app.py .
